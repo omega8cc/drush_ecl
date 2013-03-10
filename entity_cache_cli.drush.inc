@@ -25,7 +25,7 @@ function drush_ecl_drush_help($section) {
 function drush_ecl_drush_command() {
   $items = array();
   $items['entitycache-load'] = array(
-    'callback' => 'drush_drush_ecl_load_cache',
+    'callback' => 'drush_ecl_load_cache',
     'description' => t('Load the cache with the various entities configured to use the cache'),
     'arguments' => array(
       'type' => dt('Optional. Only load the particular entity type objects into cache'),
@@ -42,7 +42,7 @@ function drush_ecl_drush_command() {
  * @param $type Optional. The specific type of entity that should
  *   get it's content cached.
  */
-function drush_drush_ecl_load_cache($type = '') {
+function drush_ecl_load_cache($type = '') {
   $types = entity_get_info();
   $start = time();
   if (!empty($type)) {
@@ -55,20 +55,20 @@ function drush_drush_ecl_load_cache($type = '') {
   }
   
   // Lets try things in a batch.
-  _drush_drush_ecl_batch_load_cache($types);
+  _drush_ecl_batch_load_cache($types);
   $batch =& batch_get();
   $batch['progressive'] = FALSE;
   drush_backend_batch_process();
 }
 
-function _drush_drush_ecl_batch_load_cache($types) {
+function _drush_ecl_batch_load_cache($types) {
   if (count($types) == 0) {
     return;
   }
 
   $batch = array(
     'operations' => array(),
-    'finished' => '_drush_drush_ecl_batches_finished',
+    'finished' => '_drush_ecl_batches_finished',
     'title' => t('Loading cache...'),
     'init_message' => dt('Preparing to cache content...'),
     'progress_message' => dt('Submitting content...'),
@@ -77,26 +77,26 @@ function _drush_drush_ecl_batch_load_cache($types) {
   
   foreach ($types as $entity_type => $entity_controller) {
     $batch['operations'][] = array(
-      'drush_drush_ecl_batch_load_cache', array($entity_type),
+      'drush_ecl_batch_load_cache', array($entity_type),
     );
   }
   batch_set($batch);
 }
 
-function _drush_drush_ecl_batches_finished($success, $results, $operations) {
+function _drush_ecl_batches_finished($success, $results, $operations) {
   drush_print('Succesfully cached all content!');
 }
 
-function drush_drush_ecl_batch_load_cache($entity_type, &$context) {
+function drush_ecl_batch_load_cache($entity_type, &$context) {
   $context['message'] = t("Begin caching $entity_type");
-  _drush_drush_ecl_load_cache($entity_type);
+  _drush_ecl_load_cache($entity_type);
   $context['finished'] = TRUE;
 }
 
 /**
  * Load the cache bin with content from a specific type of entity.
  */
-function _drush_drush_ecl_load_cache($entity_type) {
+function _drush_ecl_load_cache($entity_type) {
   $max_limit = 50;
   $query = new EntityFieldQuery;
   $result = $query
@@ -112,22 +112,21 @@ function _drush_drush_ecl_load_cache($entity_type) {
     $keys[] = $entity_key;
     $limit++;
     if ($limit >= $max_limit) {
-      _drush_drush_ecl_load_entities($entity_type, $keys);
+      _drush_ecl_load_entities($entity_type, $keys);
       $keys = array();
       $limit = 0;
     }
   }
   // Cache any remaining keys
-  _drush_drush_ecl_load_entities($entity_type, $keys);
+  _drush_ecl_load_entities($entity_type, $keys);
 }
 
 /**
  * Load the entities provided there are keys
  */
-function _drush_drush_ecl_load_entities($entity_type, $keys = array()) {
+function _drush_ecl_load_entities($entity_type, $keys = array()) {
   if (count($keys) > 0) {
     entity_load($entity_type, $keys);
     entity_get_controller($entity_type)->resetCache();
   }
 }
-
