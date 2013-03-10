@@ -26,7 +26,7 @@ function drush_ecl_drush_command() {
   $items = array();
   $items['entitycache-load'] = array(
     'callback' => 'drush_ecl_load_cache',
-    'description' => t('Load the cache with the various entities configured to use the cache'),
+    'description' => dt('Load the cache with the various entities configured to use the cache'),
     'arguments' => array(
       'type' => dt('Optional. Only load the particular entity type objects into cache'),
     ),
@@ -69,7 +69,7 @@ function _drush_ecl_batch_load_cache($types) {
   $batch = array(
     'operations' => array(),
     'finished' => '_drush_ecl_batches_finished',
-    'title' => t('Loading cache...'),
+    'title' => dt('Loading cache...'),
     'init_message' => dt('Preparing to cache content...'),
     'progress_message' => dt('Submitting content...'),
     'error_message' => dt('Content could not get cached'),
@@ -88,7 +88,7 @@ function _drush_ecl_batches_finished($success, $results, $operations) {
 }
 
 function drush_ecl_batch_load_cache($entity_type, &$context) {
-  $context['message'] = t("Begin caching $entity_type");
+  $context['message'] = dt("Begin caching $entity_type");
   _drush_ecl_load_cache($entity_type);
   $context['finished'] = TRUE;
 }
