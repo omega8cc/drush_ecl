@@ -75,9 +75,9 @@ function _drush_ecl_batch_load_cache($types) {
     'error_message' => dt('Content could not get cached'),
   );
   
-  foreach ($types as $entity_type => $entity_controller) {
+  foreach ($types as $entity_type => $entity_info) {
     $batch['operations'][] = array(
-      'drush_ecl_batch_load_cache', array($entity_type),
+      'drush_ecl_batch_load_cache', array($entity_type, $entity_info),
     );
   }
   batch_set($batch);
@@ -87,38 +87,53 @@ function _drush_ecl_batches_finished($success, $results, $operations) {
   drush_print('Succesfully cached all content!');
 }
 
-function drush_ecl_batch_load_cache($entity_type, &$context) {
-  $context['message'] = dt("Begin caching $entity_type");
-  _drush_ecl_load_cache($entity_type);
-  $context['finished'] = TRUE;
+function drush_ecl_batch_load_cache($entity_type, $entity_info, &$context) {
+  if (!isset($context['sandbox']['progress'])) {
+    // Make some assumptions like entity ids must be a positive integer.
+    $context['message'] = dt("Begin caching $entity_type");
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['current_id'] = -1;
+    $context['sandbox']['entity_count'] = _drush_ecl_get_entity_count($entity_type);
+  }
+  $context['message'] = dt("Caching {$entity_type} {$context['sandbox']['progress']} of {$context['sandbox']['entity_count']}");
+  _drush_ecl_load_cache($entity_type, $entity_info, $context);
+}
+
+function _drush_ecl_get_entity_count($entity_type) {
+  $query = new EntityFieldQuery();
+  return $query
+    ->entityCondition('entity_type', $entity_type)
+    ->count()
+    ->execute();
 }
 
 /**
  * Load the cache bin with content from a specific type of entity.
  */
-function _drush_ecl_load_cache($entity_type) {
+function _drush_ecl_load_cache($entity_type, $entity_info, &$context) {
   $max_limit = 50;
   $query = new EntityFieldQuery;
   $result = $query
     ->entityCondition('entity_type', $entity_type)
+    ->entityCondition('entity_id', $context['sandbox']['current_id'], '>')
+    ->entityOrderBy('entity_id', 'ASC')
+    ->range(0, $max_limit)
     ->execute();
     
   $keys = array();
   $limit = 0;
   if (count($result) <= 0) {
+    $context['finished'] = TRUE;
     return;
   }
   foreach ($result[$entity_type] as $entity_key => $entity_info) {
     $keys[] = $entity_key;
-    $limit++;
-    if ($limit >= $max_limit) {
-      _drush_ecl_load_entities($entity_type, $keys);
-      $keys = array();
-      $limit = 0;
-    }
+    $context['sandbox']['progress']++;
+    $context['sandbox']['current_id'] = $entity_key;
   }
-  // Cache any remaining keys
+  // Cache provided keys.
   _drush_ecl_load_entities($entity_type, $keys);
+  $context['finished'] = min($context['sandbox']['progress'] / $context['sandbox']['entity_count'], 1.0);
 }
 
 /**
