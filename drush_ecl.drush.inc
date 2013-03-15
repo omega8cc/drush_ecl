@@ -1,12 +1,9 @@
 <?php
 
 /**
- * @file
- *   drush integration for caching entity content - makes most sense with
- *   entitycache module.
+ * @file drush_ecl.drush.inc
+ *   drush integration for caching entity content.
  *   Simple idea - load each of the entities.
- *   @TODO: Figure out how to only load entities not yet in cache.
- *   @TODO: Figure out a way to have it done via a scheduler.
  */
 
 /**
@@ -15,7 +12,7 @@
 function drush_ecl_drush_help($section) {
   switch ($section) {
     case 'drush:entitycache-load':
-      return dt('Used without parameters, this command loads all the various objects in the entities into cache using entity_load()');
+      return dt('Used without parameters, this command loads all the various content in the entities into cache using entity_load()');
   }
 }
 
@@ -83,10 +80,16 @@ function _drush_ecl_batch_load_cache($types) {
   batch_set($batch);
 }
 
+/**
+ * Batch API entity caching completion message.
+ */
 function _drush_ecl_batches_finished($success, $results, $operations) {
   drush_print('Succesfully cached all content!');
 }
 
+/**
+ * Processes and loads cacheable information for entities into cache tables.
+ */
 function drush_ecl_batch_load_cache($entity_type, $entity_info, &$context) {
   if (!isset($context['sandbox']['progress'])) {
     // Make some assumptions like entity ids must be a positive integer.
@@ -99,6 +102,9 @@ function drush_ecl_batch_load_cache($entity_type, $entity_info, &$context) {
   _drush_ecl_load_cache($entity_type, $entity_info, $context);
 }
 
+/**
+ * Returns total number of entities given a specific entity given.
+ */
 function _drush_ecl_get_entity_count($entity_type) {
   $query = new EntityFieldQuery();
   return $query
@@ -108,7 +114,7 @@ function _drush_ecl_get_entity_count($entity_type) {
 }
 
 /**
- * Load the cache bin with content from a specific type of entity.
+ * Loads cache bin with content from a specific type of entity.
  */
 function _drush_ecl_load_cache($entity_type, $entity_info, &$context) {
   $max_limit = 50;
@@ -131,13 +137,17 @@ function _drush_ecl_load_cache($entity_type, $entity_info, &$context) {
     $context['sandbox']['progress']++;
     $context['sandbox']['current_id'] = $entity_key;
   }
-  // Cache provided keys.
   _drush_ecl_load_entities($entity_type, $keys);
+  // Do a final count to cache any additional entities that may have been added
+  // in the interim.
+  if ($context['sandbox']['progress'] >= $context['sandbox']['entity_count']) {
+    $context['sandbox']['entity_count'] = _drush_ecl_get_entity_count($entity_type);
+  }
   $context['finished'] = min($context['sandbox']['progress'] / $context['sandbox']['entity_count'], 1.0);
 }
 
 /**
- * Load the entities provided there are keys
+ * Load entities provided there are keys.
  */
 function _drush_ecl_load_entities($entity_type, $keys = array()) {
   if (count($keys) > 0) {
