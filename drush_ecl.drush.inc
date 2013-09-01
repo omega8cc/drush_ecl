@@ -152,6 +152,5 @@ function _drush_ecl_load_cache($entity_type, $entity_info, &$context) {
 function _drush_ecl_load_entities($entity_type, $keys = array()) {
   if (count($keys) > 0) {
     entity_load($entity_type, $keys);
-    entity_get_controller($entity_type)->resetCache();
   }
 }
